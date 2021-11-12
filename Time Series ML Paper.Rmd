@@ -207,6 +207,31 @@ final_indicator_df = full_join(daily_indicators, weekly_indicators) %>%         
 final_indicator_df %>% summarise_all(~ sum(is.na(.)))
 ```
 
+#VHT FGarch
+```{r}
+vht['dailyReturn'] = (vht$close - vht$open)/ vht$open
+holdIt = data.frame(vht$date, vht$dailyReturn)
+rownames(holdIt) <- holdIt$vht.date
+holdIt$vht.date <- NULL
+x.vec = as.xts(holdIt)
+fit <- garchFit(~ garch(1,1), data = x.vec, trace = FALSE)
+volvht <- volatility(fit)
+volvht <- xts(volvht, order.by = index(x.vec))
+plot(volvht)
+```
+
+#VDE FGarch
+```{r}
+vde['dailyReturn'] = (vde$close - vde$open)/ vde$open
+holdIt2 = data.frame(vde$date, vde$dailyReturn)
+rownames(holdIt2) <- holdIt2$vde.date
+holdIt2$vde.date <- NULL
+x.vec2 = as.xts(holdIt2)
+fit2 <- garchFit(~ garch(1,1), data = x.vec2, trace = FALSE)
+volvde <- volatility(fit2)
+volvde <- xts(volvde, order.by = index(x.vec2))
+plot(volvde)
+```
 
 + Type of Problem: **Regression**
 - Linear Regression
