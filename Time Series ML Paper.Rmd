@@ -435,7 +435,135 @@ stats::predict(enetfit.vht$finalModel, type = "coefficients", s = enetfit.vht$be
 + Type of Problem: **Regression**
 - Linear Regression
 - Lasso/ Ride/ Elastic Net 
+#CV Approach
+```{r}
+library(glmnet)
+train_vde = final_merged_vde[1:1877,]
+test_vde = final_merged_vde[1878:3754,]
+rownames(test_vde) <- 1:nrow(test_vde)
+y_vde<- train_vde$coredata.volvde.
+x_vde<- data.matrix(train_vde[, c("detr_crude_oil_prices", "detr_intl_dol", "detr_yield",
+         "chifed_nfci_detrended", "intl_job_claims_value", "m.1_detrended", "fed_bal_detrended",
+         "treas_gen_acct_detrended", "ur_detr", "cpi_detr", "adjusted_detr")])
+x_test_vde <- data.matrix(test_vde[, c("detr_crude_oil_prices", "detr_intl_dol", "detr_yield",
+         "chifed_nfci_detrended", "intl_job_claims_value", "m.1_detrended", "fed_bal_detrended",
+         "treas_gen_acct_detrended", "ur_detr", "cpi_detr", "adjusted_detr")])
+cv_model <- cv.glmnet(x_vde, y_vde, alpha = 1)
+opt_lambda <- cv_model$lambda.min
+plot(cv_model)
+opt_LASSO_model <- glmnet(x_vde, y_vde, alpha = 1, lambda = opt_lambda)
+coef(opt_LASSO_model)
+tLL <- - deviance(opt_LASSO_model)
+k <- opt_LASSO_model$df
+n <- opt_LASSO_model$nobs
+AICc <- -tLL+2*k
+y_predicted <- predict(opt_LASSO_model, s = opt_lambda, newx = x_vde)
+#find SST and SSE
+sst <- sum((y_vde - mean(y_vde))^2)
+sse <- sum((y_vde - y_predicted)^2)
+rsq <- 1 - sse/sst
+mse <- (sum((y_vde - y_predicted)^2))/1877
+mse
+rsq
+AICc
+opt_lambda
+```
 
+```{r}
+train_vht = final_merged_vht[1:1877,]
+test_vht = final_merged_vht[1878:3754,]
+rownames(test_vht) <- 1:nrow(test_vht)
+y_vht<- train_vht$coredata.volvht.
+x_vht<- data.matrix(train_vht[, c("detr_crude_oil_prices", "detr_intl_dol", "detr_yield",
+         "chifed_nfci_detrended", "intl_job_claims_value", "m.1_detrended", "fed_bal_detrended",
+         "treas_gen_acct_detrended", "ur_detr", "cpi_detr", "adjusted_detr")])
+x_test_vht <- data.matrix(test_vht[, c("detr_crude_oil_prices", "detr_intl_dol", "detr_yield",
+         "chifed_nfci_detrended", "intl_job_claims_value", "m.1_detrended", "fed_bal_detrended",
+         "treas_gen_acct_detrended", "ur_detr", "cpi_detr", "adjusted_detr")])
+cv_model_vht <- cv.glmnet(x_vht, y_vht, alpha = 1)
+opt_lambda_vht <- cv_model$lambda.min
+plot(cv_model_vht)
+opt_LASSO_model_vht <- glmnet(x_vht, y_vht, alpha = 1, lambda = opt_lambda)
+tLL <- - deviance(opt_LASSO_model_vht)
+k <- opt_LASSO_model_vht$df
+n <- opt_LASSO_model_vht$nobs
+AICc_vht <- -tLL+2*k
+coef(opt_LASSO_model_vht)
+y_predicted_vht <- predict(opt_LASSO_model_vht, s = opt_lambda_vht, newx = x_vht)
+
+#find SST and SSE
+sst_vht <- sum((y_vht - mean(y_vht))^2)
+sse_vht <- sum((y_vht - y_predicted_vht)^2)
+rsq_vht <- 1 - sse_vht/sst_vht
+mse_vht <- (sum((y_vht - y_predicted_vht)^2))/1877
+mse_vht
+rsq_vht
+AICc_vht
+opt_lambda_vht
+```
+#AIC Approach
+```{r}
+new_lambda <- 0.00001
+AIC_vals<- vector()
+lamb_vals <- vector()
+AIC_min <- 0.0
+lamb_min <- 0.00001
+while(new_lambda < 0.01){
+  lamb_vals <- c(lamb_vals, new_lambda)
+  fit_AIC <- glmnet(x_vde, y_vde, alpha = 1, lambda = new_lambda)
+  tLL <- - deviance(fit_AIC)
+  k <- fit_AIC$df
+  n <- fit_AIC$nobs
+  AICc <- -tLL+2*k
+  if(new_lambda == 0.00001){
+    AIC_min = AICc
+  }
+  else if(AICc < AIC_min && AICc != AIC_min){
+    AIC_min = AICc
+    lamb_min = new_lambda
+    print(lamb_min)
+  }
+  AIC_vals<- c(AIC_vals, AICc)
+  new_lambda = new_lambda + 0.001
+}
+good_LASSO <- glmnet(x_vde, y_vde, alpha = 1, lambda = lamb_min)
+coef(good_LASSO)
+print(AIC_min)
+print(lamb_min)
+plot(AIC_vals, lamb_vals)
+
+```
+
+```{r}
+
+new_lambda_vht <- 0.00001
+AIC_vals_vht <- vector()
+lamb_vals_vht <- vector()
+AIC_min_vht <- 0.0
+lamb_min_vht <- 0.00001
+while(new_lambda_vht < 0.01){
+  lamb_vals_vht <- c(lamb_vals_vht, new_lambda_vht)
+  fit_AIC_vht <- glmnet(x_vht, y_vht, alpha = 1, lambda = new_lambda_vht)
+  tLL <- - deviance(fit_AIC_vht)
+  k <- fit_AIC_vht$df
+  n <- fit_AIC_vht$nobs
+  AIC_vht <- -tLL+2*k
+  if(new_lambda_vht == 0.00001){
+    AIC_min_vht = AIC_vht
+  }
+  else if(AIC_vht < AIC_min_vht){
+    AIC_min_vht = AIC_vht
+    lamb_min_vht = new_lambda_vht
+  }
+  AIC_vals_vht<- c(AIC_vals_vht, AIC_vht)
+  new_lambda_vht = new_lambda_vht + 0.001
+}
+good_LASSO_vht <- glmnet(x_vht, y_vht, alpha = 1, lambda = new_lambda_vht)
+coef(good_LASSO_vht)
+print(AIC_min_vht)
+print(new_lambda_vht)
+plot(AIC_vals_vht, lamb_vals_vht)
+```
 *Create Factor Importance Plots*
 - Regression Trees
 - Random Forests
